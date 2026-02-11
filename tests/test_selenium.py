@@ -12,11 +12,9 @@ import os
 
 
 class TestCalculator:
-
     @pytest.fixture(scope="class")
     def driver(self):
         """Configuration du driver Chrome pour les tests"""
-
         chrome_options = Options()
 
         if os.getenv('CI'):
@@ -28,15 +26,19 @@ class TestCalculator:
 
         driver_path = ChromeDriverManager().install()
 
-        if not driver_path.lower().endswith("chromedriver.exe"):
-            folder = os.path.dirname(driver_path)
-            candidates = [p for p in os.listdir(folder) if p.lower() == "chromedriver.exe"]
+        folder = os.path.dirname(driver_path)
+
+        if "third_party_notices" in os.path.basename(driver_path).lower():
+            candidates = [
+                p for p in os.listdir(folder)
+                if p.lower() in ("chromedriver.exe", "chromedriver")
+            ]
 
             if candidates:
                 driver_path = os.path.join(folder, candidates[0])
             else:
                 raise RuntimeError(
-                    f"chromedriver.exe introuvable dans: {folder}\n"
+                    f"chromedriver introuvable dans: {folder}\n"
                     f"install() a renvoyé: {driver_path}"
                 )
 
@@ -48,7 +50,7 @@ class TestCalculator:
         driver.quit()
 
     def test_page_loads(self, driver):
-        """Test 01: Vérifier que la page se charge correctement"""
+        """Test 1: Vérifier que la page se charge correctement"""
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
@@ -63,7 +65,9 @@ class TestCalculator:
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
+        driver.find_element(By.ID, "num1").clear()
         driver.find_element(By.ID, "num1").send_keys("10")
+        driver.find_element(By.ID, "num2").clear()
         driver.find_element(By.ID, "num2").send_keys("5")
 
         select = Select(driver.find_element(By.ID, "operation"))
@@ -74,7 +78,6 @@ class TestCalculator:
         result = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "result"))
         )
-
         assert "Résultat: 15" in result.text
 
     def test_division_by_zero(self, driver):
@@ -95,7 +98,6 @@ class TestCalculator:
         result = WebDriverWait(driver, 10).until(
             EC.presence_of_element_located((By.ID, "result"))
         )
-
         assert "Erreur: Division par zéro" in result.text
 
     def test_all_operations(self, driver):
@@ -107,7 +109,7 @@ class TestCalculator:
             ("add", "8", "2", "10"),
             ("subtract", "8", "2", "6"),
             ("multiply", "8", "2", "16"),
-            ("divide", "8", "2", "4")
+            ("divide", "8", "2", "4"),
         ]
 
         for op, num1, num2, expected in operations:
@@ -125,7 +127,6 @@ class TestCalculator:
             result = WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.ID, "result"))
             )
-
             assert f"Résultat: {expected}" in result.text
 
             time.sleep(1)
