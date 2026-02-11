@@ -54,7 +54,6 @@ class TestCalculator:
                 f"install() a renvoyé: {driver_path}"
             )
 
-        # Fix permission CI Linux
         if os.getenv("CI") and not sys.platform.startswith("win"):
             mode = os.stat(driver_path).st_mode
             os.chmod(driver_path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
@@ -65,7 +64,6 @@ class TestCalculator:
 
         yield driver
         driver.quit()
-
 
     def test_page_loads(self, driver):
         file_path = os.path.abspath("../src/index.html")
@@ -81,6 +79,8 @@ class TestCalculator:
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
+        driver.find_element(By.ID, "num1").clear()
+        driver.find_element(By.ID, "num2").clear()
         driver.find_element(By.ID, "num1").send_keys("10")
         driver.find_element(By.ID, "num2").send_keys("5")
 
@@ -96,6 +96,8 @@ class TestCalculator:
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
+        driver.find_element(By.ID, "num1").clear()
+        driver.find_element(By.ID, "num2").clear()
         driver.find_element(By.ID, "num1").send_keys("10")
         driver.find_element(By.ID, "num2").send_keys("0")
 
@@ -135,7 +137,6 @@ class TestCalculator:
             assert f"Résultat: {expected}" in result.text
             time.sleep(1)
 
-
     def test_page_load_time(self, driver):
         start_time = time.time()
         file_path = os.path.abspath("../src/index.html")
@@ -148,27 +149,33 @@ class TestCalculator:
         load_time = time.time() - start_time
         assert load_time < 3.0
 
-
     def test_decimal_numbers(self, driver):
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
-        driver.find_element(By.ID, "num1").send_keys("10.5")
-        driver.find_element(By.ID, "num2").send_keys("2.5")
+        num1 = driver.find_element(By.ID, "num1")
+        num2 = driver.find_element(By.ID, "num2")
+
+        driver.execute_script("arguments[0].value = arguments[1];", num1, "10.5")
+        driver.execute_script("arguments[0].value = arguments[1];", num2, "2.5")
 
         Select(driver.find_element(By.ID, "operation")).select_by_value("add")
         driver.find_element(By.ID, "calculate").click()
 
-        result = WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "result"))
+        WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.ID, "result").text.strip() != ""
         )
 
-        assert "13" in result.text
+        result_text = driver.find_element(By.ID, "result").text
+        assert "Résultat:" in result_text
+        assert "13" in result_text
 
     def test_negative_numbers(self, driver):
         file_path = os.path.abspath("../src/index.html")
         driver.get(f"file://{file_path}")
 
+        driver.find_element(By.ID, "num1").clear()
+        driver.find_element(By.ID, "num2").clear()
         driver.find_element(By.ID, "num1").send_keys("-8")
         driver.find_element(By.ID, "num2").send_keys("-2")
 
